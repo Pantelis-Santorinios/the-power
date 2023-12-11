@@ -7,9 +7,9 @@ contextBridge.exposeInMainWorld(
     getScripts: async () => {
       return ipcRenderer.invoke('get-scripts');
     },
-    runScript: async (scriptName) => {
+    runScript: async (scriptNames, scriptCount) => {
       isScriptRunning = true;
-      const result = await ipcRenderer.invoke('run-script', scriptName);
+      const result = await ipcRenderer.invoke('run-script', scriptNames, scriptCount);
       isScriptRunning = false;
       return result;
     },
