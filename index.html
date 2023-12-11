@@ -4,8 +4,8 @@
 
 <style>
 #scriptQueue, #logs {
-    width: 100%; /* Adjust as needed */
-    height: 200px; /* Adjust as needed */
+    width: 100%;
+    height: 200px; 
     resize: both;
     border: 1px solid #000;
     overflow: auto;
@@ -34,6 +34,9 @@ button.arrow.up::before {
 button.arrow.down::before {
   content: "↓";
 }
+input[type="number"] {
+  width: 30px; 
+}
 </style>
 </head>
 
@@ -46,6 +49,10 @@ button.arrow.down::before {
     <button id="addToQueueButton">Add to Queue</button>
     <button id="runScriptsButton">Run Scripts</button>
     <button id="resetSelectionButton">Reset Selection</button>
+    <div>
+      <label for="queueCount">How many times should the queued job run:</label>
+      <input type="number" id="queueCount" name="queueCount" min="1" value="1">
+    </div>
     <h3>Scripts Execution List:</h3>
     <div id="scriptQueue"></div>
     <h3>Execution Logs:</h3>
@@ -172,6 +179,19 @@ function addToQueue() {
     removeButton.addEventListener("click", function() {
       div.parentNode.removeChild(div);
     });
+    
+    var runTimesLabel = document.createElement("label");
+    runTimesLabel.textContent = " Run ";
+
+    var runTimesInput = document.createElement("input");
+    runTimesInput.type = "number";
+    runTimesInput.className = "scriptCount";
+    runTimesInput.name = "scriptCount";
+    runTimesInput.min = "1";
+    runTimesInput.value = "1";
+
+    var timesLabel = document.createElement("label");
+    timesLabel.textContent = " times";
 
     upButton.style.verticalAlign = "+2px";
     downButton.style.verticalAlign = "+2px";
@@ -179,6 +199,9 @@ function addToQueue() {
     div.appendChild(upButton);
     div.appendChild(downButton);
     div.appendChild(removeButton);
+    div.appendChild(runTimesLabel);
+    div.appendChild(runTimesInput);
+    div.appendChild(timesLabel);
 
     document.getElementById("scriptQueue").appendChild(div);
   }
@@ -192,11 +215,16 @@ async function runScripts() {
 
     var scriptQueue = document.getElementById("scriptQueue");
     var scripts = scriptQueue.getElementsByTagName("div");
-
-    for (let script of scripts) {
+    var queueCount = document.getElementById('queueCount').value;
+    var scriptNames = Array.from(scripts).map(script => script.dataset.scriptName);
+    for (let i = 0; i < queueCount; i++) {
+      for (let script of scripts) {
         try {
-            let result = await myApi.runScript(script.dataset.scriptName);
-
+            let scriptName = script.dataset.scriptName;
+            let scriptCount = script.querySelector('.scriptCount').value;
+            let results = await myApi.runScript(scriptName, scriptCount);
+            for (let result of results) {
+              if (result) {
             // Print the script output
             var outputDiv = document.createElement("div");
             outputDiv.innerHTML = `<br><span style="color: blue; font-weight: bold;">Running ` + script.textContent + `: </span>` + `<span style="color: black; font-weight: normal;">`  + JSON.stringify([result.output], null, 2).replace(/\\n/g, '\n').replace(/\\/g, '') + "</span><br>";
@@ -209,11 +237,16 @@ async function runScripts() {
                 doneDiv.style.color = "green";
                 doneDiv.style.fontWeight = "bold";
                 document.getElementById("logs").appendChild(doneDiv);
+              }
+          } else {
+            console.error('Result is undefined');
+          }
             }
         } catch (error) {
             var errorDiv = document.createElement("div");
             errorDiv.innerHTML = `<br><span style="color: red; font-weight: bold;">Error: Error occurred while executing ` + script.textContent + `: </span>` + `<span style="color: black; font-weight: normal;">` + error + "</span><br>";
             document.getElementById("logs").appendChild(errorDiv);
+          }
         }
     }
 }
