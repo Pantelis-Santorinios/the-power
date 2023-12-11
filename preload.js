@@ -36,6 +36,9 @@ contextBridge.exposeInMainWorld(
     checkFileExists: (filePath) => {
       return ipcRenderer.invoke('check-file-exists', filePath);
     },
+    readFile: async (filePath) => {
+      return ipcRenderer.invoke('read-file', filePath);
+    },
     executeCommand: (command) => {
       return ipcRenderer.invoke('execute-command', command);
     },

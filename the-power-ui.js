@@ -95,6 +95,12 @@ ipcMain.handle('check-file-exists', async (event, pathToFile) => {
   }
 });
 
+// Handle 'read-file' IPC event
+ipcMain.handle('read-file', async (event, filePath) => {
+  const content = await fs.promises.readFile(filePath, 'utf8');
+  return content;
+});
+
 // Handle 'delete-file' IPC event
 ipcMain.handle('delete-file', async (event, pathToFile) => {
   try {
