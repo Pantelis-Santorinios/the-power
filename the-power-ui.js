@@ -207,8 +207,8 @@ async function runSingleScript(event, scriptName) {
           const scriptName = line.split(' ')[0].slice(2);
           const absoluteScriptPath = path.join(appPath, scriptName);
           return line.replace(`./${scriptName}`, absoluteScriptPath);
-        } else if (line.trim() === '.  ./.gh-api-examples.conf') {
-          return `. "${confFilePath}"`;
+        } else if (line.trim().startsWith('. ./.gh-api-examples.conf')) {
+          return line.replace('. ./.gh-api-examples.conf', `. "${confFilePath}"`);
         } else {
           return line;
         }
@@ -222,7 +222,7 @@ async function runSingleScript(event, scriptName) {
       tempScriptPath = path.join(os.tmpdir(), scriptName); // Assign value to tempScriptPath here
       return fs.promises.writeFile(tempScriptPath, newScriptContent);
     }).then(() => {
-      const child = spawn('/bin/bash', ['-c', `bash "${tempScriptPath}"`], { cwd: scriptDir });
+      const child = spawn('/bin/bash', ['-c', `bash "${tempScriptPath}"`], { cwd: userDataPath });
 
       child.stdout.on('data', (data) => {
         if (!mainWindow.isDestroyed()) {
