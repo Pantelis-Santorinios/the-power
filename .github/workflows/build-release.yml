@@ -2,6 +2,15 @@ name: Build - Release
 
 on:
   workflow_dispatch:
+    inputs:
+      pre-release:
+        description: "Pre-release"
+        type: boolean
+        default: true
+      tag:
+        description: "Tag"
+        default: "latest"
+        required: true
 
 jobs:
   build:
@@ -27,8 +36,8 @@ jobs:
     - uses: "marvinpinto/action-automatic-releases@latest"
       with:
          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-         automatic_release_tag: "latest"
-         prerelease: true
+         automatic_release_tag: "${{ inputs.tag }}"
+         prerelease: "${{ inputs.pre-release }}"
          title: "Initial build"
          files: |
             the-power-ui.app.tar.gz
