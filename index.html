@@ -4,8 +4,8 @@
 
 <style>
 #scriptQueue, #logs {
-    width: 100%; /* Adjust as needed */
-    height: 200px; /* Adjust as needed */
+    width: 100%; 
+    height: 200px; 
     resize: both;
     border: 1px solid #000;
     overflow: auto;
@@ -34,6 +34,10 @@ button.arrow.up::before {
 button.arrow.down::before {
   content: "↓";
 }
+input[type="number"] {
+  width: 30px; 
+}
+</style>
 </style>
 </head>
 
@@ -46,6 +50,10 @@ button.arrow.down::before {
     <button id="addToQueueButton">Add to Queue</button>
     <button id="runScriptsButton">Run Scripts</button>
     <button id="resetSelectionButton">Reset Selection</button>
+    <div>
+      <label for="queueCount">How many times should the queued job run:</label>
+      <input type="number" id="queueCount" name="queueCount" min="1" value="1">
+    </div>
     <h3>Scripts Execution List:</h3>
     <div id="scriptQueue"></div>
     <h3>Execution Logs:</h3>
@@ -172,6 +180,19 @@ function addToQueue() {
     removeButton.addEventListener("click", function() {
       div.parentNode.removeChild(div);
     });
+    
+    var runTimesLabel = document.createElement("label");
+    runTimesLabel.textContent = " Run ";
+
+    var runTimesInput = document.createElement("input");
+    runTimesInput.type = "number";
+    runTimesInput.className = "scriptCount";
+    runTimesInput.name = "scriptCount";
+    runTimesInput.min = "1";
+    runTimesInput.value = "1";
+
+    var timesLabel = document.createElement("label");
+    timesLabel.textContent = " times";
 
     upButton.style.verticalAlign = "+2px";
     downButton.style.verticalAlign = "+2px";
@@ -179,6 +200,9 @@ function addToQueue() {
     div.appendChild(upButton);
     div.appendChild(downButton);
     div.appendChild(removeButton);
+    div.appendChild(runTimesLabel);
+    div.appendChild(runTimesInput);
+    div.appendChild(timesLabel);
 
     document.getElementById("scriptQueue").appendChild(div);
   }
@@ -187,16 +211,21 @@ function addToQueue() {
 
 
 async function runScripts() {
-    // Clear the "Execution Logs" box
-    document.getElementById("logs").innerHTML = "";
+  // Clear the "Execution Logs" box
+  document.getElementById("logs").innerHTML = "";
 
-    var scriptQueue = document.getElementById("scriptQueue");
-    var scripts = scriptQueue.getElementsByTagName("div");
-
+  var scriptQueue = document.getElementById("scriptQueue");
+  var scripts = scriptQueue.getElementsByTagName("div");
+  var queueCount = document.getElementById('queueCount').value;
+  var scriptNames = Array.from(scripts).map(script => script.dataset.scriptName);
+  for (let i = 0; i < queueCount; i++) {
     for (let script of scripts) {
-        try {
-            let result = await myApi.runScript(script.dataset.scriptName);
-
+      try {
+        let scriptName = script.dataset.scriptName;
+        let scriptCount = script.querySelector('.scriptCount').value;
+        let results = await myApi.runScript(scriptName, scriptCount);
+        for (let result of results) {
+          if (result) {
             // Print the script output
             var outputDiv = document.createElement("div");
             outputDiv.innerHTML = `<br><span style="color: blue; font-weight: bold;">Running ` + script.textContent + `: </span>` + `<span style="color: black; font-weight: normal;">`  + JSON.stringify([result.output], null, 2).replace(/\\n/g, '\n').replace(/\\/g, '') + "</span><br>";
@@ -204,18 +233,23 @@ async function runScripts() {
 
             // If this is the last script and it finished without errors, print "Done" message
             if (script === scripts[scripts.length - 1] && !JSON.stringify(result.output).includes("Error")) {
-                var doneDiv = document.createElement("div");
-                doneDiv.textContent = "Done!";
-                doneDiv.style.color = "green";
-                doneDiv.style.fontWeight = "bold";
-                document.getElementById("logs").appendChild(doneDiv);
+              var doneDiv = document.createElement("div");
+              doneDiv.textContent = "Done!";
+              doneDiv.style.color = "green";
+              doneDiv.style.fontWeight = "bold";
+              document.getElementById("logs").appendChild(doneDiv);
             }
-        } catch (error) {
-            var errorDiv = document.createElement("div");
-            errorDiv.innerHTML = `<br><span style="color: red; font-weight: bold;">Error: Error occurred while executing ` + script.textContent + `: </span>` + `<span style="color: black; font-weight: normal;">` + error + "</span><br>";
-            document.getElementById("logs").appendChild(errorDiv);
+          } else {
+            console.error('Result is undefined');
+          }
         }
+      } catch (error) {
+        var errorDiv = document.createElement("div");
+        errorDiv.innerHTML = `<br><span style="color: red; font-weight: bold;">Error: Error occurred while executing ` + script.textContent + `: </span>` + `<span style="color: black; font-weight: normal;">` + error + "</span><br>";
+        document.getElementById("logs").appendChild(errorDiv);
+      }
     }
+  }
 }
 
 
@@ -257,5 +291,47 @@ myApi.onScriptOutput(({ scriptName, output }) => {
 }
 </script>
 <button id="quit-button" style="color: red; font-weight: bold;">Quit</button>
+<script>
+  (async () => {
+    const confFilePath = localStorage.getItem('configFilePath');
+    if (confFilePath) {
+      const confFileContent = await window.myApi.readFile(confFilePath);
+      const hostname = confFileContent.match(/hostname=(.+)/)[1];
+
+      // Create a div for the message and the link
+      const div = document.createElement('div');
+      div.style.marginTop = '20px';
+
+      // Create a strong element for the hostname label
+      const hostnameLabel = document.createElement('strong');
+      hostnameLabel.textContent = 'Current Host: ';
+      div.appendChild(hostnameLabel);
+
+      // Create a text node for the hostname
+      const hostnameText = document.createTextNode(hostname);
+      div.appendChild(hostnameText);
+
+      // Create a line break
+      const lineBreak = document.createElement('br');
+      div.appendChild(lineBreak);
+
+      // Create a text node for the message
+      const message = document.createElement('strong');
+      message.textContent = 'Configuration file: ';
+      div.appendChild(message);
+
+      // Create a link to the .gh-api-examples.conf file
+      const confFileLink = document.createElement('a');
+      confFileLink.href = `file://${confFilePath}`;
+      confFileLink.textContent = `"${confFilePath}"`;
+      confFileLink.target = '_blank'; 
+      div.appendChild(confFileLink);
+
+      // Append the hostname and the div to the body of the document
+      document.body.appendChild(div);
+    }
+  })();
+</script>
+  </script>
 </body>
 </html>

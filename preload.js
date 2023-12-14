@@ -7,9 +7,9 @@ contextBridge.exposeInMainWorld(
     getScripts: async () => {
       return ipcRenderer.invoke('get-scripts');
     },
-    runScript: async (scriptName) => {
+    runScript: async (scriptNames, scriptCount) => {
       isScriptRunning = true;
-      const result = await ipcRenderer.invoke('run-script', scriptName);
+      const result = await ipcRenderer.invoke('run-script', scriptNames, scriptCount);
       isScriptRunning = false;
       return result;
     },
@@ -35,6 +35,9 @@ contextBridge.exposeInMainWorld(
     },
     checkFileExists: (filePath) => {
       return ipcRenderer.invoke('check-file-exists', filePath);
+    },
+    readFile: async (filePath) => {
+      return ipcRenderer.invoke('read-file', filePath);
     },
     executeCommand: (command) => {
       return ipcRenderer.invoke('execute-command', command);

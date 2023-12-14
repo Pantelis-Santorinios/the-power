@@ -95,6 +95,12 @@ ipcMain.handle('check-file-exists', async (event, pathToFile) => {
   }
 });
 
+// Handle 'read-file' IPC event
+ipcMain.handle('read-file', async (event, filePath) => {
+  const content = await fs.promises.readFile(filePath, 'utf8');
+  return content;
+});
+
 // Handle 'delete-file' IPC event
 ipcMain.handle('delete-file', async (event, pathToFile) => {
   try {
@@ -175,66 +181,84 @@ ipcMain.handle('get-user-data-path', () => {
 });
 
 // Handle 'run-script' IPC event
-ipcMain.handle('run-script', async (event, scriptName) => {
-  return new Promise(async (resolve, reject) => {
+ipcMain.handle('run-script', async (event, scriptName, scriptCount) => {
+  let results = [];
+  for (let i = 0; i < scriptCount; i++) {
     try {
-      const appPath = app.getAppPath();
-      const scriptPath = path.join(appPath, scriptName);
-      const scriptDir = path.dirname(scriptPath);
-      const scriptContent = await fs.promises.readFile(scriptPath, 'utf-8');
+      let result = await runSingleScript(event, scriptName);
+      results.push(result);
+    } catch (error) {
+      return { output: `An error occurred: ${error.message}` };
+    }
+  }
+  return results;
+});
+async function runSingleScript(event, scriptName) {
+  return new Promise((resolve, reject) => {
+    const appPath = app.getAppPath();
+    const scriptPath = path.join(appPath, scriptName);
+    const scriptDir = path.dirname(scriptPath);
+    let tempScriptPath; // Define tempScriptPath here
+
+    fs.promises.readFile(scriptPath, 'utf-8').then(scriptContent => {
       const scriptLines = scriptContent.split('\n');
       const newScriptLines = scriptLines.map(line => {
         if (line.startsWith('./')) {
-          // Replace the relative path to the script with an absolute path
           const scriptName = line.split(' ')[0].slice(2);
-          const absoluteScriptPath = path.join(__dirname, scriptName);
+          const absoluteScriptPath = path.join(appPath, scriptName);
           return line.replace(`./${scriptName}`, absoluteScriptPath);
-        } else if (line.trim() === '.  ./.gh-api-examples.conf') {
-          // Replace the line
-          return `. "${confFilePath}"`;
+        } else if (line.trim().startsWith('. ./.gh-api-examples.conf')) {
+          return line.replace('. ./.gh-api-examples.conf', `. "${confFilePath}"`);
         } else {
           return line;
         }
       });
-      const newScriptContent = newScriptLines.join('\n');
-      
 
-      // Add the path to jq to the system's PATH environment variable
+      const newScriptContent = newScriptLines.join('\n');
+
       const jqPath = '/usr/local/bin:/opt/homebrew/bin/jq';
       process.env.PATH = `${jqPath}:${process.env.PATH}`;
 
-      // Write the new script content to a temporary file
-      const tempScriptPath = path.join(os.tmpdir(), scriptName);
-      await fs.promises.writeFile(tempScriptPath, newScriptContent);
-      const child = spawn('/bin/bash', ['-c', `bash "${tempScriptPath}"`], { cwd: scriptDir });
+      tempScriptPath = path.join(os.tmpdir(), scriptName); // Assign value to tempScriptPath here
+      return fs.promises.writeFile(tempScriptPath, newScriptContent);
+    }).then(() => {
+      const child = spawn('/bin/bash', ['-c', `bash "${tempScriptPath}"`], { cwd: userDataPath });
 
       child.stdout.on('data', (data) => {
-        event.sender.send('script-output', { scriptName, output: data.toString() });
+        if (!mainWindow.isDestroyed()) {
+          event.sender.send('script-output', { scriptName, output: data.toString() });
+        }
       });
 
       child.stderr.on('data', (data) => {
-        console.error(`stderr: ${data}`);
+        if (!mainWindow.isDestroyed()) {
+          console.error(`stderr: ${data}`);
+        }
       });
 
       child.on('error', (error) => {
-        console.error('Failed to start subprocess.', error);
-        reject(error);
+        if (!mainWindow.isDestroyed()) {
+          console.error('Failed to start subprocess.', error);
+          reject(error);
+        }
       });
 
       child.on('close', (code) => {
-        if (code !== 0) {
-          console.error(`child process exited with code ${code}`);
-          reject(new Error(`child process exited with code ${code}`));
-        } else {
-          resolve({ output: 'Script executed successfully' });
+        if (!mainWindow.isDestroyed()) {
+          if (code !== 0) {
+            console.error(`child process exited with code ${code}`);
+            reject(new Error(`child process exited with code ${code}`));
+          } else {
+            resolve({ output: 'Script executed successfully' });
+          }
         }
       });
-    } catch (error) {
+    }).catch(error => {
       console.error('An error occurred:', error);
-      reject(error);
-    }
+      reject({ output: `An error occurred: ${error.message}` });
+    });
   });
-});
+}
 
 app.on('window-all-closed', function () {
   if (process.platform !== 'darwin') app.quit();
