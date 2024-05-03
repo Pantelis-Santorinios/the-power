@@ -1,0 +1,25 @@
+name: Build 
+
+on:
+ pull_request:
+jobs:
+  build:
+    runs-on: macos-13
+    steps:
+    - uses: actions/checkout@v4
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: latest
+        cache: 'npm'
+    - name: Install dependancies
+      run: |
+         npm install --save-dev electron-packager
+         npm install
+    - name: Building
+      run: npm run build
+    - name: Compressing
+      run: |
+        ls -alh build/the-power-ui-darwin-x64
+        pwd
+        tar -czvf the-power-ui.app.tar.gz build/the-power-ui-darwin-x64/the-power-ui.app
