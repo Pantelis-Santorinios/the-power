@@ -20,6 +20,6 @@ jobs:
       run: npm run build
     - name: Compressing
       run: |
-        ls -alh build/the-power-ui-darwin-x64
+        ls -alh build/the-power-ui-darwin-arm64
         pwd
-        tar -czvf the-power-ui.app.tar.gz build/the-power-ui-darwin-x64/the-power-ui.app
+        tar -czvf the-power-ui.app.tar.gz build/the-power-ui-darwin-arm64/the-power-ui.app
