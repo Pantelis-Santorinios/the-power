@@ -40,6 +40,7 @@
     </div>
     <div>
       <button id="add-environment">Add New Environment</button>
+      <button id="delete-environment">Delete Environment</button>
       <button id="reload-environments">Reload Environments</button>
     </div>
   </div>
@@ -118,6 +119,30 @@ document.getElementById('add-environment').addEventListener('click', async () =>
 
 document.getElementById('reload-environments').addEventListener('click', async () => {
   await loadEnvironments();
+});
+
+document.getElementById('delete-environment').addEventListener('click', async () => {
+  const selectedEnv = document.getElementById('environment-selector').value;
+  if (!selectedEnv) {
+    alert('Please select an environment to delete');
+    return;
+  }
+  
+  if (selectedEnv === 'default') {
+    alert('Cannot delete the default environment');
+    return;
+  }
+  
+  if (confirm(`Are you sure you want to delete the environment '${selectedEnv}'? This action cannot be undone.`)) {
+    const result = await window.myApi.deleteEnvironment(selectedEnv);
+    if (result.success) {
+      alert(`Environment '${selectedEnv}' deleted successfully`);
+      await loadEnvironments();
+      await updateConfigurationDisplay();
+    } else {
+      alert(`Error deleting environment: ${result.error}`);
+    }
+  }
 });
   </script>
 </body>

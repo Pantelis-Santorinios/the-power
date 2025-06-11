@@ -14,6 +14,39 @@ const { spawn } = require('child_process');
 let currentEnvironment = 'default';
 let currentConfigPath = confFilePath;
 
+// Save and load environment state
+const environmentStateFile = path.join(userDataPath, '.power-env-state.json');
+
+async function saveEnvironmentState() {
+  try {
+    const state = { currentEnvironment, currentConfigPath };
+    await fs.promises.writeFile(environmentStateFile, JSON.stringify(state, null, 2));
+  } catch (error) {
+    console.error('Error saving environment state:', error);
+  }
+}
+
+async function loadEnvironmentState() {
+  try {
+    const data = await fs.promises.readFile(environmentStateFile, 'utf8');
+    const state = JSON.parse(data);
+    currentEnvironment = state.currentEnvironment || 'default';
+    currentConfigPath = state.currentConfigPath || confFilePath;
+    
+    // Verify the config file exists, fallback to default if not
+    const exists = await fs.promises.access(currentConfigPath).then(() => true).catch(() => false);
+    if (!exists) {
+      currentEnvironment = 'default';
+      currentConfigPath = confFilePath;
+      await saveEnvironmentState();
+    }
+  } catch (error) {
+    // If file doesn't exist or there's an error, use defaults
+    currentEnvironment = 'default';
+    currentConfigPath = confFilePath;
+  }
+}
+
 let mainWindow;
 
 // Helper functions for environment management
@@ -58,7 +91,10 @@ async function getAvailableEnvironments() {
   }
 }
 
-function createWindow () {
+async function createWindow () {
+  // Load environment state on startup
+  await loadEnvironmentState();
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 900,
@@ -103,8 +139,8 @@ function createWindow () {
 }
 
 app.on('ready', () => {
-  session.defaultSession.clearCache().then(() => {
-    createWindow();
+  session.defaultSession.clearCache().then(async () => {
+    await createWindow();
   }).catch((error) => {
     console.error(error);
   });
@@ -119,9 +155,10 @@ ipcMain.handle('get-current-environment', () => {
   return currentEnvironment;
 });
 
-ipcMain.handle('set-current-environment', (event, envName) => {
+ipcMain.handle('set-current-environment', async (event, envName) => {
   currentEnvironment = envName;
   currentConfigPath = getConfigPathForEnvironment(envName);
+  await saveEnvironmentState();
   return currentConfigPath;
 });
 
@@ -137,6 +174,28 @@ ipcMain.handle('create-new-environment', async (event, envName) => {
       throw new Error(`Environment '${envName}' already exists`);
     }
     return { success: true, configPath, envName };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-environment', async (event, envName) => {
+  try {
+    if (envName === 'default') {
+      throw new Error('Cannot delete the default environment');
+    }
+    
+    const configPath = getConfigPathForEnvironment(envName);
+    await fs.promises.unlink(configPath);
+    
+    // If this was the current environment, switch to default
+    if (currentEnvironment === envName) {
+      currentEnvironment = 'default';
+      currentConfigPath = getConfigPathForEnvironment('default');
+      await saveEnvironmentState();
+    }
+    
+    return { success: true };
   } catch (error) {
     return { success: false, error: error.message };
   }

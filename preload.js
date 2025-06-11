@@ -89,6 +89,9 @@ contextBridge.exposeInMainWorld(
     },
     createNewEnvironment: (envName) => {
       return ipcRenderer.invoke('create-new-environment', envName);
+    },
+    deleteEnvironment: (envName) => {
+      return ipcRenderer.invoke('delete-environment', envName);
     }
   }
 );

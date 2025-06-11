@@ -52,6 +52,7 @@ input[type="number"] {
         <option value="">Loading...</option>
       </select>
       <button id="reload-environments-main" style="margin-left: 10px;">Reload</button>
+      <button id="delete-environment-main" style="margin-left: 5px;">Delete</button>
     </div>
     
     <h3>Scripts List:</h3>
@@ -305,6 +306,11 @@ async function loadEnvironmentsMain() {
     const environments = await myApi.getAvailableEnvironments();
     const selector = document.getElementById('environment-selector-main');
     
+    if (!selector) {
+      console.warn('Environment selector not found in main UI');
+      return;
+    }
+    
     // Clear existing options
     selector.innerHTML = '';
     
@@ -327,7 +333,10 @@ async function loadEnvironmentsMain() {
     
   } catch (error) {
     console.error('Error loading environments:', error);
-    document.getElementById('environment-selector-main').innerHTML = '<option value="">Error loading environments</option>';
+    const selector = document.getElementById('environment-selector-main');
+    if (selector) {
+      selector.innerHTML = '<option value="">Error loading environments</option>';
+    }
   }
 }
 
@@ -400,6 +409,30 @@ document.getElementById('environment-selector-main').addEventListener('change', 
 
 document.getElementById('reload-environments-main').addEventListener('click', async () => {
   await loadEnvironmentsMain();
+});
+
+document.getElementById('delete-environment-main').addEventListener('click', async () => {
+  const selectedEnv = document.getElementById('environment-selector-main').value;
+  if (!selectedEnv) {
+    alert('Please select an environment to delete');
+    return;
+  }
+  
+  if (selectedEnv === 'default') {
+    alert('Cannot delete the default environment');
+    return;
+  }
+  
+  if (confirm(`Are you sure you want to delete the environment '${selectedEnv}'? This action cannot be undone.`)) {
+    const result = await myApi.deleteEnvironment(selectedEnv);
+    if (result.success) {
+      alert(`Environment '${selectedEnv}' deleted successfully`);
+      await loadEnvironmentsMain();
+      await updateConfigDisplayMain();
+    } else {
+      alert(`Error deleting environment: ${result.error}`);
+    }
+  }
 });
 
 // Initialize environment selection for main UI

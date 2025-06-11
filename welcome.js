@@ -6,6 +6,11 @@ async function loadEnvironments() {
     const environments = await window.myApi.getAvailableEnvironments();
     const selector = document.getElementById('environment-selector');
     
+    if (!selector) {
+      console.warn('Environment selector not found');
+      return;
+    }
+    
     // Clear existing options
     selector.innerHTML = '';
     
@@ -28,7 +33,10 @@ async function loadEnvironments() {
     
   } catch (error) {
     console.error('Error loading environments:', error);
-    document.getElementById('environment-selector').innerHTML = '<option value="">Error loading environments</option>';
+    const selector = document.getElementById('environment-selector');
+    if (selector) {
+      selector.innerHTML = '<option value="">Error loading environments</option>';
+    }
   }
 }
 
@@ -109,15 +117,15 @@ window.onload = async () => {
     // Store confFilePath in localStorage
     localStorage.setItem('configFilePath', confFilePath);
 
-    // Check if .gh-api-examples.conf exists
-    const exists = await window.myApi.checkFileExists(confFilePath);
+    // Check if any configuration exists (default or environment-specific)
+    const environments = await window.myApi.getAvailableEnvironments();
     const shell = document.getElementById('shell');
-    if (exists) {
-      // .gh-api-examples.conf exists
+    if (environments.length > 0) {
+      // Some configuration exists
       shell.innerText = 'The Power is already configured. Press Start to proceed or Reconfigure if you wish to set up a new instance or token.';
       window.dispatchEvent(new Event('configComplete'));
     } else {
-      // .gh-api-examples.conf does not exist
+      // No configuration exists
       // Start the interactive shell
   
        // Specify the path to the Python interpreter installed by Homebrew
