@@ -181,11 +181,11 @@ ipcMain.handle('get-user-data-path', () => {
 });
 
 // Handle 'run-script' IPC event
-ipcMain.handle('run-script', async (event, scriptName, scriptCount) => {
+ipcMain.handle('run-script', async (event, scriptName, scriptCount, scriptArguments) => {
   let results = [];
   for (let i = 0; i < scriptCount; i++) {
     try {
-      let result = await runSingleScript(event, scriptName);
+      let result = await runSingleScript(event, scriptName, scriptArguments);
       results.push(result);
     } catch (error) {
       return { output: `An error occurred: ${error.message}` };
@@ -193,7 +193,7 @@ ipcMain.handle('run-script', async (event, scriptName, scriptCount) => {
   }
   return results;
 });
-async function runSingleScript(event, scriptName) {
+async function runSingleScript(event, scriptName, scriptArguments) {
   return new Promise((resolve, reject) => {
     const appPath = app.getAppPath();
     const scriptPath = path.join(appPath, scriptName);
@@ -222,7 +222,13 @@ async function runSingleScript(event, scriptName) {
       tempScriptPath = path.join(os.tmpdir(), scriptName); // Assign value to tempScriptPath here
       return fs.promises.writeFile(tempScriptPath, newScriptContent);
     }).then(() => {
-      const child = spawn('/bin/bash', ['-c', `bash "${tempScriptPath}"`], { cwd: userDataPath });
+      // Build the command with arguments if provided
+      let command = `bash "${tempScriptPath}"`;
+      if (scriptArguments && scriptArguments.trim()) {
+        command += ` ${scriptArguments.trim()}`;
+      }
+      
+      const child = spawn('/bin/bash', ['-c', command], { cwd: userDataPath });
 
       child.stdout.on('data', (data) => {
         if (!mainWindow.isDestroyed()) {
