@@ -20,6 +20,90 @@
           0%, 100% { opacity: 1; }
           50% { opacity: 0; }
         }
+
+        /* Theme styles */
+        .theme-default {
+          background-color: white;
+          color: black;
+        }
+
+        .theme-retro {
+          background-color: #f5f5dc;
+          color: #8b4513;
+          background-image: linear-gradient(45deg, #f5f5dc 25%, #fff8dc 25%, #fff8dc 50%, #f5f5dc 50%, #f5f5dc 75%, #fff8dc 75%, #fff8dc);
+          background-size: 20px 20px;
+        }
+
+        .theme-retro h1 {
+          color: #8b4513;
+          text-shadow: 2px 2px 0px #ddd;
+        }
+
+        .theme-retro button {
+          background-color: #deb887;
+          color: #8b4513;
+          border: 2px solid #8b4513;
+          border-radius: 8px;
+          font-weight: bold;
+        }
+
+        .theme-matrix {
+          background-color: #000;
+          color: #00ff00;
+          font-family: 'Courier New', monospace;
+        }
+
+        .theme-matrix h1 {
+          color: #00ff00;
+          text-shadow: 0 0 10px #00ff00;
+        }
+
+        .theme-matrix button {
+          background-color: #001100;
+          color: #00ff00;
+          border: 1px solid #00ff00;
+          border-radius: 4px;
+        }
+
+        .theme-matrix select {
+          background-color: #001100;
+          color: #00ff00;
+          border: 1px solid #00ff00;
+        }
+
+        .theme-matrix #shell {
+          background-color: #001100;
+          color: #00ff00;
+          border: 1px solid #00ff00;
+        }
+
+        .theme-dark {
+          background-color: #2d2d2d;
+          color: #f0f0f0;
+        }
+
+        .theme-dark h1 {
+          color: #ffffff;
+        }
+
+        .theme-dark button {
+          background-color: #4a4a4a;
+          color: #f0f0f0;
+          border: 1px solid #666;
+          border-radius: 4px;
+        }
+
+        .theme-dark select {
+          background-color: #4a4a4a;
+          color: #f0f0f0;
+          border: 1px solid #666;
+        }
+
+        .theme-dark #shell {
+          background-color: #3a3a3a;
+          color: #f0f0f0;
+          border: 1px solid #666;
+        }
     </style>
 </head>
 <body>
@@ -30,6 +114,13 @@
   <button id="reconfigure">Reconfigure</button>
   
   <div style="display: flex; position: absolute; top: 10px; right: 10px;">
+    <div style="margin-right: 5px;">&#x1F3A8;</div>
+    <select id="theme-selection" style="margin-right: 10px;">
+      <option value="default">Default</option>
+      <option value="retro">Retro</option>
+      <option value="matrix">Matrix</option>
+      <option value="dark">Dark</option>
+    </select>
     <div style="margin-right: 5px;">&#x0386;</div>
     <select id="font-selection">
       <option value="Arial">Arial</option>
@@ -64,6 +155,23 @@ document.getElementById('reconfigure').addEventListener('click', async () => {
     buttons[i].style.fontFamily = font;
   }
 }
+
+// Function to change the theme
+function changeTheme(theme) {
+  // Remove all theme classes
+  document.body.classList.remove('theme-default', 'theme-retro', 'theme-matrix', 'theme-dark');
+  // Add the selected theme class
+  document.body.classList.add('theme-' + theme);
+}
+
+// Add an event listener for the theme selection dropdown
+document.getElementById('theme-selection').addEventListener('change', (event) => {
+  // Change the theme
+  changeTheme(event.target.value);
+  
+  // Save the selected theme to local storage
+  localStorage.setItem('selectedTheme', event.target.value);
+});
 
 document.getElementById('font-selection').addEventListener('change', (event) => {
   // Change the font of the body and buttons

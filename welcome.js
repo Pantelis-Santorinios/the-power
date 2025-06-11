@@ -90,6 +90,36 @@ window.onload = async () => {
     shell.innerText = shell.innerText.split('\n').slice(0, -1).join('\n') + '\n' + inputBuffer;
   });
 
+  // Restore saved font and theme on page load
+  const selectedFont = localStorage.getItem('selectedFont');
+  if (selectedFont) {
+    const changeFont = (font) => {
+      document.body.style.fontFamily = font;
+      const buttons = document.getElementsByTagName('button');
+      for (let i = 0; i < buttons.length; i++) {
+        buttons[i].style.fontFamily = font;
+      }
+    };
+    changeFont(selectedFont);
+    document.getElementById('font-selection').value = selectedFont;
+  }
+
+  const selectedTheme = localStorage.getItem('selectedTheme');
+  const changeTheme = (theme) => {
+    // Remove all theme classes
+    document.body.classList.remove('theme-default', 'theme-retro', 'theme-matrix', 'theme-dark');
+    // Add the selected theme class
+    document.body.classList.add('theme-' + theme);
+  };
+  
+  if (selectedTheme) {
+    changeTheme(selectedTheme);
+    document.getElementById('theme-selection').value = selectedTheme;
+  } else {
+    // Default theme if none is saved
+    changeTheme('default');
+  }
+
   };
   
  // Listen for the configComplete event
