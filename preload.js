@@ -73,6 +73,25 @@ contextBridge.exposeInMainWorld(
     joinPath: async (path1, path2) => {
         const result = await ipcRenderer.invoke('join-path', path1, path2);
         return result;
+    },
+    // Environment management methods
+    getAvailableEnvironments: () => {
+      return ipcRenderer.invoke('get-available-environments');
+    },
+    getCurrentEnvironment: () => {
+      return ipcRenderer.invoke('get-current-environment');
+    },
+    setCurrentEnvironment: (envName) => {
+      return ipcRenderer.invoke('set-current-environment', envName);
+    },
+    getCurrentConfigPath: () => {
+      return ipcRenderer.invoke('get-current-config-path');
+    },
+    createNewEnvironment: (envName) => {
+      return ipcRenderer.invoke('create-new-environment', envName);
+    },
+    deleteEnvironment: (envName) => {
+      return ipcRenderer.invoke('delete-environment', envName);
     }
   }
 );

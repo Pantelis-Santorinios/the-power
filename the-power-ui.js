@@ -10,10 +10,91 @@ const userDataPath = app.getPath('userData');
 const confFilePath = path.join(app.getPath('userData'), '.gh-api-examples.conf');
 const { spawn } = require('child_process');
 
+// Current configuration state
+let currentEnvironment = 'default';
+let currentConfigPath = confFilePath;
+
+// Save and load environment state
+const environmentStateFile = path.join(userDataPath, '.power-env-state.json');
+
+async function saveEnvironmentState() {
+  try {
+    const state = { currentEnvironment, currentConfigPath };
+    await fs.promises.writeFile(environmentStateFile, JSON.stringify(state, null, 2));
+  } catch (error) {
+    console.error('Error saving environment state:', error);
+  }
+}
+
+async function loadEnvironmentState() {
+  try {
+    const data = await fs.promises.readFile(environmentStateFile, 'utf8');
+    const state = JSON.parse(data);
+    currentEnvironment = state.currentEnvironment || 'default';
+    currentConfigPath = state.currentConfigPath || confFilePath;
+    
+    // Verify the config file exists, fallback to default if not
+    const exists = await fs.promises.access(currentConfigPath).then(() => true).catch(() => false);
+    if (!exists) {
+      currentEnvironment = 'default';
+      currentConfigPath = confFilePath;
+      await saveEnvironmentState();
+    }
+  } catch (error) {
+    // If file doesn't exist or there's an error, use defaults
+    currentEnvironment = 'default';
+    currentConfigPath = confFilePath;
+  }
+}
 
 let mainWindow;
 
-function createWindow () {
+// Helper functions for environment management
+function getConfigPathForEnvironment(envName) {
+  if (envName === 'default') {
+    return path.join(userDataPath, '.gh-api-examples.conf');
+  }
+  return path.join(userDataPath, `.gh-api-examples-${envName}.conf`);
+}
+
+function getEnvironmentNameFromConfigPath(configPath) {
+  const basename = path.basename(configPath);
+  if (basename === '.gh-api-examples.conf') {
+    return 'default';
+  }
+  const match = basename.match(/^\.gh-api-examples-(.+)\.conf$/);
+  return match ? match[1] : 'default';
+}
+
+async function getAvailableEnvironments() {
+  try {
+    const files = await fs.promises.readdir(userDataPath);
+    const configFiles = files.filter(file => 
+      file === '.gh-api-examples.conf' || file.match(/^\.gh-api-examples-.+\.conf$/)
+    );
+    
+    const environments = configFiles.map(file => {
+      if (file === '.gh-api-examples.conf') {
+        return { name: 'default', path: path.join(userDataPath, file) };
+      }
+      const match = file.match(/^\.gh-api-examples-(.+)\.conf$/);
+      return match ? { 
+        name: match[1], 
+        path: path.join(userDataPath, file) 
+      } : null;
+    }).filter(env => env !== null);
+    
+    return environments;
+  } catch (error) {
+    console.error('Error getting available environments:', error);
+    return [];
+  }
+}
+
+async function createWindow () {
+  // Load environment state on startup
+  await loadEnvironmentState();
+  
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 900,
@@ -58,11 +139,66 @@ function createWindow () {
 }
 
 app.on('ready', () => {
-  session.defaultSession.clearCache().then(() => {
-    createWindow();
+  session.defaultSession.clearCache().then(async () => {
+    await createWindow();
   }).catch((error) => {
     console.error(error);
   });
+});
+
+// Environment management IPC handlers
+ipcMain.handle('get-available-environments', async () => {
+  return await getAvailableEnvironments();
+});
+
+ipcMain.handle('get-current-environment', () => {
+  return currentEnvironment;
+});
+
+ipcMain.handle('set-current-environment', async (event, envName) => {
+  currentEnvironment = envName;
+  currentConfigPath = getConfigPathForEnvironment(envName);
+  await saveEnvironmentState();
+  return currentConfigPath;
+});
+
+ipcMain.handle('get-current-config-path', () => {
+  return currentConfigPath;
+});
+
+ipcMain.handle('create-new-environment', async (event, envName) => {
+  try {
+    const configPath = getConfigPathForEnvironment(envName);
+    const exists = await fs.promises.access(configPath).then(() => true).catch(() => false);
+    if (exists) {
+      throw new Error(`Environment '${envName}' already exists`);
+    }
+    return { success: true, configPath, envName };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
+});
+
+ipcMain.handle('delete-environment', async (event, envName) => {
+  try {
+    if (envName === 'default') {
+      throw new Error('Cannot delete the default environment');
+    }
+    
+    const configPath = getConfigPathForEnvironment(envName);
+    await fs.promises.unlink(configPath);
+    
+    // If this was the current environment, switch to default
+    if (currentEnvironment === envName) {
+      currentEnvironment = 'default';
+      currentConfigPath = getConfigPathForEnvironment('default');
+      await saveEnvironmentState();
+    }
+    
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: error.message };
+  }
 });
 
 ipcMain.handle('join-path', (event, path1, path2) => {
@@ -208,7 +344,7 @@ async function runSingleScript(event, scriptName) {
           const absoluteScriptPath = path.join(appPath, scriptName);
           return line.replace(`./${scriptName}`, absoluteScriptPath);
         } else if (line.trim().startsWith('. ./.gh-api-examples.conf')) {
-          return line.replace('. ./.gh-api-examples.conf', `. "${confFilePath}"`);
+          return line.replace('. ./.gh-api-examples.conf', `. "${currentConfigPath}"`);
         } else {
           return line;
         }

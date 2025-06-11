@@ -44,6 +44,17 @@ input[type="number"] {
 
 <body>
     <h1 style="color: rgb(36, 3, 106); font-weight: bold;">The Power UI !!!</h1>
+    
+    <!-- Environment Selection Controls -->
+    <div style="margin-bottom: 20px; border: 1px solid #ccc; padding: 10px; background-color: #f9f9f9;">
+      <label for="environment-selector-main">Current Environment:</label>
+      <select id="environment-selector-main">
+        <option value="">Loading...</option>
+      </select>
+      <button id="reload-environments-main" style="margin-left: 10px;">Reload</button>
+      <button id="delete-environment-main" style="margin-left: 5px;">Delete</button>
+    </div>
+    
     <h3>Scripts List:</h3>
     <p>Select the scripts you want to run in the order you want to run them from drop down menu.</p>
     <select id="scriptSelector"></select>
@@ -288,48 +299,151 @@ myApi.onScriptOutput(({ scriptName, output }) => {
   outputDiv.innerHTML = `<br><span style="color: blue; font-weight: bold;">Running ${scriptName}: </span>` + `<span style="color: black; font-weight: normal;">`  + JSON.stringify([output], null, 2).replace(/\\n/g, '\n').replace(/\\/g, '') + "</span><br>";
   document.getElementById("logs").appendChild(outputDiv);
 });
+
+// Environment management functions for main UI
+async function loadEnvironmentsMain() {
+  try {
+    const environments = await myApi.getAvailableEnvironments();
+    const selector = document.getElementById('environment-selector-main');
+    
+    if (!selector) {
+      console.warn('Environment selector not found in main UI');
+      return;
+    }
+    
+    // Clear existing options
+    selector.innerHTML = '';
+    
+    if (environments.length === 0) {
+      selector.innerHTML = '<option value="">No environments found</option>';
+      return;
+    }
+    
+    // Add environment options
+    environments.forEach(env => {
+      const option = document.createElement('option');
+      option.value = env.name;
+      option.textContent = env.name;
+      selector.appendChild(option);
+    });
+    
+    // Set current environment
+    const currentEnv = await myApi.getCurrentEnvironment();
+    selector.value = currentEnv || 'default';
+    
+  } catch (error) {
+    console.error('Error loading environments:', error);
+    const selector = document.getElementById('environment-selector-main');
+    if (selector) {
+      selector.innerHTML = '<option value="">Error loading environments</option>';
+    }
+  }
+}
+
+async function switchEnvironmentMain(envName) {
+  try {
+    await myApi.setCurrentEnvironment(envName);
+    console.log(`Switched to environment: ${envName}`);
+    
+    // Update configuration display
+    await updateConfigDisplayMain();
+  } catch (error) {
+    console.error('Error switching environment:', error);
+  }
+}
+
+async function updateConfigDisplayMain() {
+  try {
+    const configPath = await myApi.getCurrentConfigPath();
+    const exists = await myApi.checkFileExists(configPath);
+    
+    if (exists) {
+      const confFileContent = await myApi.readFile(configPath);
+      const hostname = confFileContent.match(/hostname=(.+)/);
+      
+      // Update or create configuration display
+      let div = document.getElementById('config-display-main');
+      if (!div) {
+        div = document.createElement('div');
+        div.id = 'config-display-main';
+        div.style.marginTop = '20px';
+        document.body.appendChild(div);
+      }
+      
+      div.innerHTML = ''; // Clear existing content
+      
+      if (hostname) {
+        const hostnameLabel = document.createElement('strong');
+        hostnameLabel.textContent = 'Current Host: ';
+        div.appendChild(hostnameLabel);
+
+        const hostnameText = document.createTextNode(hostname[1]);
+        div.appendChild(hostnameText);
+
+        const lineBreak = document.createElement('br');
+        div.appendChild(lineBreak);
+
+        const message = document.createElement('strong');
+        message.textContent = 'Configuration file: ';
+        div.appendChild(message);
+
+        const confFileLink = document.createElement('a');
+        confFileLink.href = `file://${configPath}`;
+        confFileLink.textContent = `"${configPath}"`;
+        confFileLink.target = '_blank'; 
+        div.appendChild(confFileLink);
+      }
+    }
+  } catch (error) {
+    console.error('Error updating configuration display:', error);
+  }
+}
+
+// Add environment control event listeners for main UI
+document.getElementById('environment-selector-main').addEventListener('change', async (event) => {
+  const selectedEnv = event.target.value;
+  if (selectedEnv) {
+    await switchEnvironmentMain(selectedEnv);
+  }
+});
+
+document.getElementById('reload-environments-main').addEventListener('click', async () => {
+  await loadEnvironmentsMain();
+});
+
+document.getElementById('delete-environment-main').addEventListener('click', async () => {
+  const selectedEnv = document.getElementById('environment-selector-main').value;
+  if (!selectedEnv) {
+    alert('Please select an environment to delete');
+    return;
+  }
+  
+  if (selectedEnv === 'default') {
+    alert('Cannot delete the default environment');
+    return;
+  }
+  
+  if (confirm(`Are you sure you want to delete the environment '${selectedEnv}'? This action cannot be undone.`)) {
+    const result = await myApi.deleteEnvironment(selectedEnv);
+    if (result.success) {
+      alert(`Environment '${selectedEnv}' deleted successfully`);
+      await loadEnvironmentsMain();
+      await updateConfigDisplayMain();
+    } else {
+      alert(`Error deleting environment: ${result.error}`);
+    }
+  }
+});
+
+// Initialize environment selection for main UI
+loadEnvironmentsMain();
 }
 </script>
 <button id="quit-button" style="color: red; font-weight: bold;">Quit</button>
 <script>
   (async () => {
-    const confFilePath = localStorage.getItem('configFilePath');
-    if (confFilePath) {
-      const confFileContent = await window.myApi.readFile(confFilePath);
-      const hostname = confFileContent.match(/hostname=(.+)/)[1];
-
-      // Create a div for the message and the link
-      const div = document.createElement('div');
-      div.style.marginTop = '20px';
-
-      // Create a strong element for the hostname label
-      const hostnameLabel = document.createElement('strong');
-      hostnameLabel.textContent = 'Current Host: ';
-      div.appendChild(hostnameLabel);
-
-      // Create a text node for the hostname
-      const hostnameText = document.createTextNode(hostname);
-      div.appendChild(hostnameText);
-
-      // Create a line break
-      const lineBreak = document.createElement('br');
-      div.appendChild(lineBreak);
-
-      // Create a text node for the message
-      const message = document.createElement('strong');
-      message.textContent = 'Configuration file: ';
-      div.appendChild(message);
-
-      // Create a link to the .gh-api-examples.conf file
-      const confFileLink = document.createElement('a');
-      confFileLink.href = `file://${confFilePath}`;
-      confFileLink.textContent = `"${confFilePath}"`;
-      confFileLink.target = '_blank'; 
-      div.appendChild(confFileLink);
-
-      // Append the hostname and the div to the body of the document
-      document.body.appendChild(div);
-    }
+    // Initialize with current environment configuration
+    await updateConfigDisplayMain();
   })();
 </script>
   </script>

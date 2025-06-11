@@ -1,4 +1,106 @@
 let isScriptRunning = false;
+
+// Environment management functions
+async function loadEnvironments() {
+  try {
+    const environments = await window.myApi.getAvailableEnvironments();
+    const selector = document.getElementById('environment-selector');
+    
+    if (!selector) {
+      console.warn('Environment selector not found');
+      return;
+    }
+    
+    // Clear existing options
+    selector.innerHTML = '';
+    
+    if (environments.length === 0) {
+      selector.innerHTML = '<option value="">No environments found</option>';
+      return;
+    }
+    
+    // Add environment options
+    environments.forEach(env => {
+      const option = document.createElement('option');
+      option.value = env.name;
+      option.textContent = env.name;
+      selector.appendChild(option);
+    });
+    
+    // Set current environment
+    const currentEnv = await window.myApi.getCurrentEnvironment();
+    selector.value = currentEnv || 'default';
+    
+  } catch (error) {
+    console.error('Error loading environments:', error);
+    const selector = document.getElementById('environment-selector');
+    if (selector) {
+      selector.innerHTML = '<option value="">Error loading environments</option>';
+    }
+  }
+}
+
+async function switchEnvironment(envName) {
+  try {
+    const configPath = await window.myApi.setCurrentEnvironment(envName);
+    console.log(`Switched to environment: ${envName} (${configPath})`);
+    
+    // Update display if configuration info is shown
+    await updateConfigurationDisplay();
+  } catch (error) {
+    console.error('Error switching environment:', error);
+  }
+}
+
+async function updateConfigurationDisplay() {
+  try {
+    const configPath = await window.myApi.getCurrentConfigPath();
+    const exists = await window.myApi.checkFileExists(configPath);
+    
+    if (exists) {
+      const confFileContent = await window.myApi.readFile(configPath);
+      const hostname = confFileContent.match(/hostname=(.+)/);
+      
+      // Update any existing configuration display
+      const existingDiv = document.querySelector('#config-display');
+      if (existingDiv) {
+        existingDiv.remove();
+      }
+      
+      if (hostname) {
+        const div = document.createElement('div');
+        div.id = 'config-display';
+        div.style.marginTop = '20px';
+
+        const hostnameLabel = document.createElement('strong');
+        hostnameLabel.textContent = 'Current Host: ';
+        div.appendChild(hostnameLabel);
+
+        const hostnameText = document.createTextNode(hostname[1]);
+        div.appendChild(hostnameText);
+
+        const lineBreak = document.createElement('br');
+        div.appendChild(lineBreak);
+
+        const message = document.createElement('strong');
+        message.textContent = 'Configuration file: ';
+        div.appendChild(message);
+
+        const confFileLink = document.createElement('a');
+        confFileLink.href = `file://${configPath}`;
+        confFileLink.textContent = `"${configPath}"`;
+        confFileLink.target = '_blank'; 
+        div.appendChild(confFileLink);
+
+        const reconfigureButton = document.getElementById('reconfigure');
+        reconfigureButton.parentNode.insertBefore(div, reconfigureButton.nextSibling);
+      }
+    }
+  } catch (error) {
+    console.error('Error updating configuration display:', error);
+  }
+}
+
 window.onload = async () => {
   try {
     // Get the start button and disable it by default
@@ -15,15 +117,15 @@ window.onload = async () => {
     // Store confFilePath in localStorage
     localStorage.setItem('configFilePath', confFilePath);
 
-    // Check if .gh-api-examples.conf exists
-    const exists = await window.myApi.checkFileExists(confFilePath);
+    // Check if any configuration exists (default or environment-specific)
+    const environments = await window.myApi.getAvailableEnvironments();
     const shell = document.getElementById('shell');
-    if (exists) {
-      // .gh-api-examples.conf exists
+    if (environments.length > 0) {
+      // Some configuration exists
       shell.innerText = 'The Power is already configured. Press Start to proceed or Reconfigure if you wish to set up a new instance or token.';
       window.dispatchEvent(new Event('configComplete'));
     } else {
-      // .gh-api-examples.conf does not exist
+      // No configuration exists
       // Start the interactive shell
   
        // Specify the path to the Python interpreter installed by Homebrew
@@ -90,10 +192,15 @@ window.onload = async () => {
     shell.innerText = shell.innerText.split('\n').slice(0, -1).join('\n') + '\n' + inputBuffer;
   });
 
+  // Initialize environment selection
+  await loadEnvironments();
+
   };
   
  // Listen for the configComplete event
  window.addEventListener('configComplete', async () => {
+  await loadEnvironments(); // Reload environments after configuration
+  
   const userDataPath = await window.myApi.getUserDataPath();
   const confFilePath = await window.myApi.joinPath(userDataPath, '.gh-api-examples.conf');
   const existsAfterConfig = await window.myApi.checkFileExists(confFilePath);
@@ -103,42 +210,7 @@ window.onload = async () => {
     startButton.style.color = 'black';
     startButton.style.backgroundColor = 'lightgreen';
 
-    // Read the configuration file
-    const confFileContent = await window.myApi.readFile(confFilePath);
-    const hostname = confFileContent.match(/hostname=(.+)/)[1];
-
-    // Create a div for the message and the link
-    const div = document.createElement('div');
-    div.style.marginTop = '20px';
-
-    // Create a strong element for the hostname label
-    const hostnameLabel = document.createElement('strong');
-    hostnameLabel.textContent = 'Current Host: ';
-    div.appendChild(hostnameLabel);
-
-    // Create a text node for the hostname
-    const hostnameText = document.createTextNode(hostname);
-    div.appendChild(hostnameText);
-
-    // Create a line break
-    const lineBreak = document.createElement('br');
-    div.appendChild(lineBreak);
-
-    // Create a text node for the message
-    const message = document.createElement('strong');
-    message.textContent = 'Configuration file: ';
-    div.appendChild(message);
-
-    // Create a link to the .gh-api-examples.conf file
-    const confFileLink = document.createElement('a');
-    confFileLink.href = `file://${confFilePath}`;
-    confFileLink.textContent = `"${confFilePath}"`;
-    confFileLink.target = '_blank'; 
-    div.appendChild(confFileLink);
-
-    // Append the div after the reconfigure button
-    const reconfigureButton = document.getElementById('reconfigure');
-    reconfigureButton.parentNode.insertBefore(div, reconfigureButton.nextSibling);
+    await updateConfigurationDisplay();
   }
 
 });
