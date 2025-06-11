@@ -194,6 +194,16 @@ function addToQueue() {
     var timesLabel = document.createElement("label");
     timesLabel.textContent = " times";
 
+    var argumentsLabel = document.createElement("label");
+    argumentsLabel.textContent = " Arguments: ";
+
+    var argumentsInput = document.createElement("input");
+    argumentsInput.type = "text";
+    argumentsInput.className = "scriptArguments";
+    argumentsInput.placeholder = "Script arguments (optional)";
+    argumentsInput.style.marginLeft = "10px";
+    argumentsInput.style.width = "200px";
+
     upButton.style.verticalAlign = "+2px";
     downButton.style.verticalAlign = "+2px";
     removeButton.style.verticalAlign = "1px";
@@ -203,6 +213,8 @@ function addToQueue() {
     div.appendChild(runTimesLabel);
     div.appendChild(runTimesInput);
     div.appendChild(timesLabel);
+    div.appendChild(argumentsLabel);
+    div.appendChild(argumentsInput);
 
     document.getElementById("scriptQueue").appendChild(div);
   }
@@ -223,7 +235,8 @@ async function runScripts() {
       try {
         let scriptName = script.dataset.scriptName;
         let scriptCount = script.querySelector('.scriptCount').value;
-        let results = await myApi.runScript(scriptName, scriptCount);
+        let scriptArguments = script.querySelector('.scriptArguments').value;
+        let results = await myApi.runScript(scriptName, scriptCount, scriptArguments);
         for (let result of results) {
           if (result) {
             // Print the script output
