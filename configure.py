@@ -485,7 +485,17 @@ pool_size=10
     }
 
     target_dir = sys.argv[1]
-    out_filename = os.path.join(args.confpath, '.gh-api-examples.conf')
+    
+    # Support for environment names
+    if args.env_name:
+        env_name = args.env_name.strip()
+        if not env_name:
+            env_name = input("Enter environment name: ").strip()
+        if not env_name:
+            env_name = "default"
+        out_filename = os.path.join(args.confpath, f'.gh-api-examples-{env_name}.conf')
+    else:
+        out_filename = os.path.join(args.confpath, '.gh-api-examples.conf')
 
     try:
         with open(out_filename, "w") as out_file:
@@ -495,6 +505,15 @@ pool_size=10
             )
     except Exception as e:
         logger.warn(f"\n{bcolors.WARNING}Configuration run failed. {e}")
+
+    # After creating the first configuration, ask if user wants to create another environment
+    if not args.env_name or args.env_name == "":
+        create_another = input("Would you like to create another environment? (y/n): ").strip().lower()
+        if create_another in ['y', 'yes']:
+            env_name = input("Enter name for the new environment: ").strip()
+            if env_name:
+                logger.info(f"\n{bcolors.OKBLUE}Creating additional environment: {env_name}")
+                logger.info(f"Run 'python3 configure.py --confpath {args.confpath} --env-name {env_name}' to configure the new environment")
 
     #cmd = f"""./{args.primer}"""
     #logger.info(f"\n{bcolors.OKGREEN}Launching primer command: {args.primer}")
@@ -521,6 +540,7 @@ if __name__ == "__main__":
         default="no",
     )
     parser.add_argument('--confpath', action="store", dest="confpath", help='The path to store the conf file')
+    parser.add_argument('--env-name', action="store", dest="env_name", default="", help='Name for this environment/configuration')
     parser.add_argument("-a", "--app-id", action="store", dest="app_id", default=1)
     parser.add_argument(
         "-i", "--installation-id", action="store", dest="installation_id", default=1

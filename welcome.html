@@ -29,6 +29,21 @@
   <div id="shell" style="border: 1px solid black; padding: 10px; margin-top: 30px; margin-bottom: 10px;"></div>
   <button id="reconfigure">Reconfigure</button>
   
+  <!-- Environment Selection Controls -->
+  <div id="environment-controls" style="margin-top: 20px; border: 1px solid #ccc; padding: 10px; background-color: #f9f9f9;">
+    <h3>Environment Selection</h3>
+    <div style="margin-bottom: 10px;">
+      <label for="environment-selector">Current Environment:</label>
+      <select id="environment-selector">
+        <option value="">Loading...</option>
+      </select>
+    </div>
+    <div>
+      <button id="add-environment">Add New Environment</button>
+      <button id="reload-environments">Reload Environments</button>
+    </div>
+  </div>
+  
   <div style="display: flex; position: absolute; top: 10px; right: 10px;">
     <div style="margin-right: 5px;">&#x0386;</div>
     <select id="font-selection">
@@ -71,6 +86,38 @@ document.getElementById('font-selection').addEventListener('change', (event) => 
 
   // Save the selected font to local storage
   localStorage.setItem('selectedFont', event.target.value);
+});
+
+// Environment control event listeners
+document.getElementById('environment-selector').addEventListener('change', async (event) => {
+  const selectedEnv = event.target.value;
+  if (selectedEnv) {
+    await switchEnvironment(selectedEnv);
+  }
+});
+
+document.getElementById('add-environment').addEventListener('click', async () => {
+  const envName = prompt('Enter name for the new environment:');
+  if (envName && envName.trim()) {
+    const trimmedName = envName.trim();
+    const result = await window.myApi.createNewEnvironment(trimmedName);
+    if (result.success) {
+      // Get the path to the user data directory
+      const userDataPath = await window.myApi.getUserDataPath();
+      // Run configure.py for the new environment
+      if (confirm(`Environment '${trimmedName}' created. Configure it now?`)) {
+        await window.myApi.runInteractiveScript(`configure.py`, ['--confpath', userDataPath, '--env-name', trimmedName]);
+      }
+      // Reload environments after creation
+      await loadEnvironments();
+    } else {
+      alert(`Error creating environment: ${result.error}`);
+    }
+  }
+});
+
+document.getElementById('reload-environments').addEventListener('click', async () => {
+  await loadEnvironments();
 });
   </script>
 </body>
