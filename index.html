@@ -47,8 +47,15 @@ input[type="number"] {
 .theme-retro {
   background-color: #f5f5dc;
   color: #8b4513;
-  background-image: linear-gradient(45deg, #f5f5dc 25%, #fff8dc 25%, #fff8dc 50%, #f5f5dc 50%, #f5f5dc 75%, #fff8dc 75%, #fff8dc);
-  background-size: 20px 20px;
+  background-image: 
+    repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(255,255,255,0.1) 2px,
+      rgba(255,255,255,0.1) 4px
+    );
+  font-family: 'Georgia', serif;
 }
 
 .theme-retro h1, .theme-retro h3 {
@@ -62,12 +69,27 @@ input[type="number"] {
   border: 2px solid #8b4513;
   border-radius: 8px;
   font-weight: bold;
+  transition: all 0.2s ease;
+}
+
+.theme-retro button:hover {
+  background-color: #d2b48c;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(139, 69, 19, 0.3);
 }
 
 .theme-matrix {
   background-color: #000;
   color: #00ff00;
   font-family: 'Courier New', monospace;
+  background-image: 
+    repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 1px,
+      rgba(0,255,0,0.03) 1px,
+      rgba(0,255,0,0.03) 2px
+    );
 }
 
 .theme-matrix h1, .theme-matrix h3 {
@@ -80,6 +102,13 @@ input[type="number"] {
   color: #00ff00;
   border: 1px solid #00ff00;
   border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.theme-matrix button:hover {
+  background-color: #002200;
+  box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+  text-shadow: 0 0 4px #00ff00;
 }
 
 .theme-matrix select {
@@ -115,6 +144,48 @@ input[type="number"] {
   color: #f0f0f0;
   border: 1px solid #666;
 }
+
+.theme-neon {
+  background-color: #1a1a2e;
+  color: #eee;
+  background-image: 
+    radial-gradient(circle at 20% 20%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 80% 80%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+    radial-gradient(circle at 40% 40%, rgba(120, 255, 198, 0.3) 0%, transparent 50%);
+}
+
+.theme-neon h1, .theme-neon h3 {
+  color: #ff77c6;
+  text-shadow: 0 0 10px #ff77c6, 0 0 20px #ff77c6, 0 0 30px #ff77c6;
+}
+
+.theme-neon button {
+  background: linear-gradient(45deg, #7877c6, #ff77c6);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  box-shadow: 0 0 15px rgba(255, 119, 198, 0.5);
+  transition: all 0.3s ease;
+}
+
+.theme-neon button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0 25px rgba(255, 119, 198, 0.8);
+}
+
+.theme-neon select {
+  background: linear-gradient(45deg, #1a1a2e, #2a2a4e);
+  color: #ff77c6;
+  border: 1px solid #ff77c6;
+  border-radius: 4px;
+}
+
+.theme-neon #scriptQueue, .theme-neon #logs {
+  background: linear-gradient(135deg, #1a1a2e, #2a2a4e);
+  color: #eee;
+  border: 1px solid #ff77c6;
+  box-shadow: 0 0 10px rgba(255, 119, 198, 0.3);
+}
 </style>
 </head>
 
@@ -143,6 +214,7 @@ input[type="number"] {
         <option value="retro">Retro</option>
         <option value="matrix">Matrix</option>
         <option value="dark">Dark</option>
+        <option value="neon">Neon</option>
       </select>
       <div style="margin-right: 5px;">&#x0386;</div>
       <select id="font-selection">
@@ -166,7 +238,7 @@ input[type="number"] {
       // Function to change the theme
       function changeTheme(theme) {
         // Remove all theme classes
-        document.body.classList.remove('theme-default', 'theme-retro', 'theme-matrix', 'theme-dark');
+        document.body.classList.remove('theme-default', 'theme-retro', 'theme-matrix', 'theme-dark', 'theme-neon');
         // Add the selected theme class
         document.body.classList.add('theme-' + theme);
       }

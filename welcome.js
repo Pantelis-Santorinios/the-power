@@ -107,7 +107,7 @@ window.onload = async () => {
   const selectedTheme = localStorage.getItem('selectedTheme');
   const changeTheme = (theme) => {
     // Remove all theme classes
-    document.body.classList.remove('theme-default', 'theme-retro', 'theme-matrix', 'theme-dark');
+    document.body.classList.remove('theme-default', 'theme-retro', 'theme-matrix', 'theme-dark', 'theme-neon');
     // Add the selected theme class
     document.body.classList.add('theme-' + theme);
   };
