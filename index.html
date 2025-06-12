@@ -37,7 +37,89 @@ button.arrow.down::before {
 input[type="number"] {
   width: 30px; 
 }
-</style>
+
+/* Dark mode styles */
+body.dark-mode {
+  background-color: #1a1a1a;
+  color: #e0e0e0;
+}
+
+body.dark-mode h1,
+body.dark-mode h3,
+body.dark-mode p,
+body.dark-mode label,
+body.dark-mode div {
+  color: #e0e0e0;
+}
+
+body.dark-mode button {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+body.dark-mode button:hover {
+  background-color: #444;
+}
+
+body.dark-mode #quit-button {
+  background-color: #d32f2f;
+  color: white;
+}
+
+body.dark-mode #quit-button:hover {
+  background-color: #b71c1c;
+}
+
+body.dark-mode select {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+body.dark-mode input[type="number"] {
+  background-color: #333;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+body.dark-mode #scriptQueue,
+body.dark-mode #logs {
+  background-color: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #555;
+}
+
+body.dark-mode a {
+  color: #4fc3f7;
+}
+
+body.dark-mode a:visited {
+  color: #ce93d8;
+}
+
+.dark-mode-toggle {
+  background: none;
+  border: 1px solid #666;
+  color: inherit;
+  padding: 5px 10px;
+  margin-left: 10px;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 14px;
+}
+
+.dark-mode-toggle:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .dark-mode-toggle {
+  border-color: #888;
+}
+
+body.dark-mode .dark-mode-toggle:hover {
+  background-color: rgba(0, 0, 0, 0.2);
+}
 </style>
 </head>
 
@@ -59,7 +141,7 @@ input[type="number"] {
     <h3>Execution Logs:</h3>
      <div id="logs"></div>
 
-     <div style="display: flex; position: absolute; top: 10px; right: 10px;">
+     <div style="display: flex; position: absolute; top: 10px; right: 10px; align-items: center;">
       <div style="margin-right: 5px;">&#x0386;</div>
       <select id="font-selection">
         <option value="Arial">Arial</option>
@@ -68,6 +150,7 @@ input[type="number"] {
         <option value="Georgia">Georgia</option>
         <option value="Times New Roman">Times New Roman</option>
       </select>
+      <button id="dark-mode-toggle" class="dark-mode-toggle">🌙</button>
     </div>
     <script>
       // Function to change the font of the body and buttons
@@ -79,14 +162,61 @@ input[type="number"] {
         }
       }
     
+      // Dark mode functions
+      function toggleDarkMode() {
+        document.body.classList.toggle('dark-mode');
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        
+        // Update button icon
+        const toggleButton = document.getElementById('dark-mode-toggle');
+        toggleButton.textContent = isDarkMode ? '☀️' : '🌙';
+        
+        // Save preference to localStorage
+        localStorage.setItem('darkMode', isDarkMode);
+      }
+      
+      function initializeDarkMode() {
+        // Check for saved dark mode preference
+        const savedDarkMode = localStorage.getItem('darkMode');
+        let isDarkMode = false;
+        
+        if (savedDarkMode !== null) {
+          // Use saved preference
+          isDarkMode = savedDarkMode === 'true';
+        } else {
+          // Check system preference if no saved preference
+          isDarkMode = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        }
+        
+        if (isDarkMode) {
+          document.body.classList.add('dark-mode');
+        }
+        
+        // Update button icon
+        const toggleButton = document.getElementById('dark-mode-toggle');
+        if (toggleButton) {
+          toggleButton.textContent = isDarkMode ? '☀️' : '🌙';
+        }
+      }
     
-      // Add an event listener for the font selection dropdown
-      document.getElementById('font-selection').addEventListener('change', (event) => {
-        // Change the font of the body and buttons
-        changeFont(event.target.value);
-    
-        // Save the selected font to local storage
-        localStorage.setItem('selectedFont', event.target.value);
+      // Add an event listener for the dark mode toggle
+      document.addEventListener('DOMContentLoaded', function() {
+        const darkModeToggle = document.getElementById('dark-mode-toggle');
+        if (darkModeToggle) {
+          darkModeToggle.addEventListener('click', toggleDarkMode);
+        }
+        
+        // Add an event listener for the font selection dropdown
+        const fontSelection = document.getElementById('font-selection');
+        if (fontSelection) {
+          fontSelection.addEventListener('change', (event) => {
+            // Change the font of the body and buttons
+            changeFont(event.target.value);
+        
+            // Save the selected font to local storage
+            localStorage.setItem('selectedFont', event.target.value);
+          });
+        }
       });
     </script>
 
@@ -276,6 +406,9 @@ window.onload = function() {
           document.getElementById('font-selection').value = selectedFont;
         };
 
+ // Initialize dark mode
+ initializeDarkMode();
+
     // Print the server log
     myApi.onConsoleLog((message) => {
   var logDiv = document.createElement("div");
@@ -332,6 +465,5 @@ myApi.onScriptOutput(({ scriptName, output }) => {
     }
   })();
 </script>
-  </script>
 </body>
 </html>

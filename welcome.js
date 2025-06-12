@@ -90,6 +90,13 @@ window.onload = async () => {
     shell.innerText = shell.innerText.split('\n').slice(0, -1).join('\n') + '\n' + inputBuffer;
   });
 
+  // Load saved font preference
+  const selectedFont = localStorage.getItem('selectedFont');
+  if (selectedFont) {
+    changeFont(selectedFont);
+    document.getElementById('font-selection').value = selectedFont;
+  }
+
   };
   
  // Listen for the configComplete event
